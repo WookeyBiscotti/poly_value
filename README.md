@@ -1,6 +1,10 @@
 
 # poly_value <!-- omit from toc -->
 
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/WookeyBiscotti/poly_value/cmake-ubuntu.yml?logo=github&label=Ubuntu) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/WookeyBiscotti/poly_value/cmake-macos.yml?logo=github&label=MacOS) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/WookeyBiscotti/poly_value/cmake-windows.yml?logo=github&label=Windows)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 Polymorphic C++ Classes on the Stack
 
 - [Preview](#preview)
