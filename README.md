@@ -92,7 +92,7 @@ Since values ​​are stored on the stack, we may want to assign one value to a
 ```c++
 class Base {...};
 
-class Derived: public {...};
+class Derived: public Base {...};
 
 using poly_value = pv::poly_value<Base, 32>;
 
