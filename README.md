@@ -77,7 +77,7 @@ class Base {...};
 
 using poly_value = pv::poly_value<Base, 32>;
 
-class Derived: public {...};
+class Derived: public Base {...};
 
 poly_value value;
 value = Derived();
