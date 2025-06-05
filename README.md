@@ -1,5 +1,17 @@
 
-# poly_value
+# poly_value <!-- omit from toc -->
+
+- [Preview](#preview)
+- [Problem](#problem)
+- [A solution option](#a-solution-option)
+  - [std::variant](#stdvariant)
+    - [Pros](#pros)
+    - [Cons](#cons)
+- [Solution](#solution)
+- [API](#api)
+  - [Definition](#definition)
+  - [Copy/Move](#copymove)
+
 
 Polymorphic C++ Classes on the Stack
 
