@@ -1,6 +1,8 @@
 
 # poly_value <!-- omit from toc -->
 
+Polymorphic C++ Classes on the Stack
+
 - [Preview](#preview)
 - [Problem](#problem)
 - [A solution option](#a-solution-option)
@@ -12,8 +14,6 @@
   - [Definition](#definition)
   - [Copy/Move](#copymove)
 
-
-Polymorphic C++ Classes on the Stack
 
 ## Preview
 
