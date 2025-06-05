@@ -43,14 +43,20 @@ struct C: A {
 
 using poly_value = pv::poly_value<A, 16>;
 
-poly_value pv1 = B;
-poly_value pv2 = C;
+poly_value pv1 = B{};
+poly_value pv2 = C{};
 
 pv1->print(); // `B::print 42`
 pv2->print(); // `C::print 3.1415`
 
 pv1 = pv2;
 pv1->print(); // `C::print 3.1415`
+
+pv2 = B{};
+pv1 = std::move(pv2); // pv2 value was moved
+pv1->print();         // `B::print 42`
+
+std::cout << pv2.has_value() << std::endl; // 0
 ```
 
 ## Problem

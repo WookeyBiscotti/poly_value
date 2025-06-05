@@ -39,6 +39,7 @@ jobs:
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DPOLY_VALUE_ENABLE_TESTING=ON
+        -DPOLY_VALUE_ENABLE_EXAMPLES=ON
         -S ${{ github.workspace }}
 
     - name: Build
