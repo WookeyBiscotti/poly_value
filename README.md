@@ -7,7 +7,7 @@
 
 Polymorphic C++ Classes on the Stack
 
-- [Preview](#preview)
+- [Quick start](#quick-start)
 - [Problem](#problem)
 - [A solution option](#a-solution-option)
   - [std::variant](#stdvariant)
@@ -18,8 +18,44 @@ Polymorphic C++ Classes on the Stack
   - [Definition](#definition)
   - [Copy/Move](#copymove)
 
+## Quick start
 
-## Preview
+```c++
+struct A {
+    virtual ~A() = default;
+    virtual void print() = 0;
+};
+
+struct B: A {
+    void print() override {
+        std::cout << "B::print " << value << std::endl;
+    }
+    int value = 42;
+};
+
+struct C: A {
+    void print() override {
+        std::cout << "C::print " << value << std::endl;
+    }
+
+    float value = 3.1415f;
+};
+
+using poly_value = pv::poly_value<A, 16>;
+
+poly_value pv1 = B;
+poly_value pv2 = C;
+
+pv1->print(); // `B::print 42`
+pv2->print(); // `C::print 3.1415`
+
+pv1 = pv2;
+pv1->print(); // `C::print 3.1415`
+```
+
+## Problem
+
+You have small polymorphic classes and you want to store them in a container, but since they can be of different lengths, you are forced to store them as pointers. This leads to greater data indirection and, as a consequence, worse performance due to cache misses.
 
 ```c++
 class A {...};
@@ -44,10 +80,6 @@ values[3] = std::make_unique<D>(...);
 ```
 
 ![Memory layout](docs/memory_layout.png)
-
-## Problem
-
-You have small polymorphic classes and you want to store them in a container, but since they can be of different lengths, you are forced to store them as pointers. This leads to greater data indirection and, as a consequence, worse performance due to cache misses.
 
 ## A solution option
 
