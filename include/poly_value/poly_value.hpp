@@ -160,14 +160,10 @@ public:
         emplace<D>(std::move(value));
     }
 
-    poly_value(std::nullptr_t) noexcept: poly_value() {}
-    poly_value() noexcept: _base_ptr(nullptr) {}
+    poly_value() noexcept = default;
+    poly_value(std::nullptr_t) noexcept {}
 
-    ~poly_value() {
-        destroy();
-    }
-
-    poly_value(const poly_value& other) noexcept(NoexceptCopy): poly_value() {
+    poly_value(const poly_value& other) noexcept(NoexceptCopy) {
         operator=(other);
     }
     auto& operator=(const poly_value& other) noexcept(NoexceptCopy)
@@ -223,6 +219,10 @@ public:
         emplace<D>(std::move(other));
 
         return *this;
+    }
+
+    ~poly_value() {
+        destroy();
     }
 
     template<class D, class... Args>
