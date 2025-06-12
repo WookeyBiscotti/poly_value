@@ -160,8 +160,8 @@ public:
         emplace<D>(std::move(value));
     }
 
-    poly_value(std::nullptr_t) noexcept {}
-    poly_value() noexcept {}
+    poly_value(std::nullptr_t) noexcept: poly_value() {}
+    poly_value() noexcept: _base_ptr(nullptr) {}
 
     ~poly_value() {
         destroy();
@@ -181,7 +181,7 @@ public:
             if constexpr (Moveable) {
                 _move.set_move_fn(other._move.move_fn());
             }
-            other._copy.copy_fn()(&other, this);
+            other._copy.copy_fn()(other._storage, this->_storage);
         }
         return *this;
     }
@@ -209,7 +209,7 @@ public:
                 _copy.set_copy_fn(other._copy.copy_fn());
             }
 
-            other._move.move_fn()(&other, this);
+            other._move.move_fn()(other._storage, this->_storage);
 
             other.destroy_and_clear();
         }
@@ -232,7 +232,7 @@ public:
 
         destroy();
 
-        _ptr = new (_data) D(std::forward<Args>(args)...);
+        _base_ptr = new (_storage) D(std::forward<Args>(args)...);
 
         _copy.template generate_copy_fn<D>();
         _move.template generate_move_fn<D>();
@@ -265,7 +265,7 @@ public:
     }
 
     bool has_value() const noexcept {
-        return _ptr;
+        return _base_ptr;
     }
 
     operator bool() const noexcept {
@@ -278,16 +278,16 @@ public:
 
 private:
     Base* get_base() {
-        return _ptr;
+        return _base_ptr;
     }
     const Base* get_base() const {
-        return _ptr;
+        return _base_ptr;
     }
 
     void destroy_and_clear() {
         destroy();
 
-        _ptr = nullptr;
+        _base_ptr = nullptr;
     }
 
     void destroy() {
@@ -297,20 +297,20 @@ private:
     }
 
     std::size_t base_ptr_offset() const noexcept {
-        return reinterpret_cast<const std::byte*>(_ptr) - _data;
+        return reinterpret_cast<const std::byte*>(_base_ptr) - _storage;
     }
 
     void set_base_ptr_offset(std::size_t new_offset) noexcept {
-        _ptr = reinterpret_cast<Base*>(_data + new_offset);
+        _base_ptr = reinterpret_cast<Base*>(_storage + new_offset);
     }
 
 private:
-    Base* _ptr = nullptr;
+    Base* _base_ptr = nullptr;
 
     details::poly_value_base_copy<Copyable> _copy;
     details::poly_value_base_move<Moveable> _move;
 
-    alignas(Base) std::byte _data[Size];
+    alignas(Base) std::byte _storage[Size];
 };
 
 } // namespace pv
