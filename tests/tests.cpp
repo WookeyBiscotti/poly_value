@@ -165,3 +165,38 @@ TEST_CASE("Assign different values", "[poly_value]") {
 
     CHECK(value->apply(i) == 7);
 }
+
+TEST_CASE("multiple inheritance", "[poly_value]") {
+    struct Base1 {
+        virtual ~Base1() = default;
+        virtual int op(int value) = 0;
+        int a[2] = {1, 1};
+    };
+
+    struct Base2 {
+        virtual ~Base2() = default;
+        virtual int op2(int v1, int v2) = 0;
+        int b[2] = {2, 2};
+    };
+
+    struct D: Base1, Base2 {
+        int op(int value) override {
+            return value * 2;
+        }
+        int op2(int v1, int v2) override {
+            return v1 + v2;
+        }
+    };
+
+    auto pv1 = pv::poly_value<Base1, 32>();
+    auto pv2 = pv::poly_value<Base2, 32>();
+
+    pv1 = D{};
+    pv2 = D{};
+
+    CHECK(pv1->op(17) == 34);
+    CHECK(pv1->a[0] == 1);
+
+    CHECK(pv2->op2(10, 10) == 20);
+    CHECK(pv2->b[0] == 2);
+}

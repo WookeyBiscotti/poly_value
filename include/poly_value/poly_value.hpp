@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <new>
 #include <type_traits>
 #include <utility>
 
@@ -18,11 +17,6 @@ public:
     poly_value_base_copy(poly_value_base_copy&&) = delete;
     poly_value_base_copy& operator=(const poly_value_base_copy&) = delete;
     poly_value_base_copy& operator=(poly_value_base_copy&&) = delete;
-
-    constexpr bool has_value() const noexcept {
-        return true;
-    }
-    constexpr void reset_value() noexcept {}
 
     using CopyFn = void (*)(const void* from, void* to);
 
@@ -40,13 +34,6 @@ public:
     poly_value_base_copy(poly_value_base_copy&&) = delete;
     poly_value_base_copy& operator=(const poly_value_base_copy&) = delete;
     poly_value_base_copy& operator=(poly_value_base_copy&&) = delete;
-
-    bool has_value() const noexcept {
-        return _copy;
-    }
-    void reset_value() noexcept {
-        _copy = nullptr;
-    }
 
     template<class D>
     void generate_copy_fn() noexcept {
@@ -86,11 +73,6 @@ public:
     poly_value_base_move& operator=(const poly_value_base_move&) = delete;
     poly_value_base_move& operator=(poly_value_base_move&&) = delete;
 
-    constexpr bool has_value() const noexcept {
-        return true;
-    }
-    constexpr void reset_value() noexcept {}
-
     using MoveFn = void (*)(void* from, void* to);
 
     template<class D>
@@ -107,13 +89,6 @@ public:
     poly_value_base_move(poly_value_base_move&&) = delete;
     poly_value_base_move& operator=(const poly_value_base_move&) = delete;
     poly_value_base_move& operator=(poly_value_base_move&&) = delete;
-
-    bool has_value() const noexcept {
-        return _move;
-    }
-    void reset_value() noexcept {
-        _move = nullptr;
-    }
 
     using MoveFn = void (*)(void* from, void* to);
 
@@ -142,33 +117,6 @@ public:
 
 private:
     MoveFn _move = nullptr;
-};
-
-template<bool NeedFlag>
-class poly_value_has_value {
-public:
-    bool has_value() const noexcept {
-        return _has_value;
-    }
-    void reset_value() noexcept {
-        _has_value = false;
-    }
-    void set_value(bool flag) noexcept {
-        _has_value = flag;
-    }
-
-private:
-    bool _has_value = false;
-};
-
-template<>
-class poly_value_has_value<false> {
-public:
-    constexpr bool has_value() const noexcept {
-        return true;
-    }
-    constexpr void set_value(bool flag) noexcept {}
-    constexpr void reset_value() noexcept {}
 };
 } // namespace details
 
@@ -227,6 +175,8 @@ public:
     {
         destroy();
         if (other.has_value()) {
+            set_base_ptr_offset(other.base_ptr_offset());
+
             _copy.set_copy_fn(other._copy.copy_fn());
             if constexpr (Moveable) {
                 _move.set_move_fn(other._move.move_fn());
@@ -252,12 +202,15 @@ public:
     {
         destroy();
         if (other.has_value()) {
+            set_base_ptr_offset(other.base_ptr_offset());
+
             _move.set_move_fn(other._move.move_fn());
             if constexpr (Copyable) {
                 _copy.set_copy_fn(other._copy.copy_fn());
             }
 
             other._move.move_fn()(&other, this);
+
             other.destroy_and_clear();
         }
         return *this;
@@ -279,11 +232,10 @@ public:
 
         destroy();
 
-        new (_data) D(std::forward<Args>(args)...);
+        _ptr = new (_data) D(std::forward<Args>(args)...);
 
         _copy.template generate_copy_fn<D>();
         _move.template generate_move_fn<D>();
-        _has_value.set_value(true);
     }
 
     void emplace(const poly_value& other) noexcept(NoexceptCopy) {
@@ -313,7 +265,7 @@ public:
     }
 
     bool has_value() const noexcept {
-        return _move.has_value() && _copy.has_value() && _has_value.has_value();
+        return _ptr;
     }
 
     operator bool() const noexcept {
@@ -326,18 +278,16 @@ public:
 
 private:
     Base* get_base() {
-        return std::launder(reinterpret_cast<Base*>(_data));
+        return _ptr;
     }
     const Base* get_base() const {
-        return std::launder(reinterpret_cast<const Base*>(_data));
+        return _ptr;
     }
 
     void destroy_and_clear() {
         destroy();
 
-        _copy.reset_value();
-        _move.reset_value();
-        _has_value.reset_value();
+        _ptr = nullptr;
     }
 
     void destroy() {
@@ -346,12 +296,21 @@ private:
         }
     }
 
+    std::size_t base_ptr_offset() const noexcept {
+        return reinterpret_cast<const std::byte*>(_ptr) - _data;
+    }
+
+    void set_base_ptr_offset(std::size_t new_offset) noexcept {
+        _ptr = reinterpret_cast<Base*>(_data + new_offset);
+    }
+
 private:
-    alignas(Base) std::byte _data[Size];
+    Base* _ptr = nullptr;
 
     details::poly_value_base_copy<Copyable> _copy;
     details::poly_value_base_move<Moveable> _move;
-    details::poly_value_has_value<!Copyable && !Moveable> _has_value;
+
+    alignas(Base) std::byte _data[Size];
 };
 
 } // namespace pv
