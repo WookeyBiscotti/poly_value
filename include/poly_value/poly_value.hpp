@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
@@ -9,115 +10,82 @@ namespace pv {
 
 namespace details {
 
-template<bool C>
-class poly_value_base_copy {
+template<bool Copyable, bool Moveable>
+class poly_value_copy_move {
 public:
-    poly_value_base_copy() noexcept = default;
-    poly_value_base_copy(const poly_value_base_copy&) = delete;
-    poly_value_base_copy(poly_value_base_copy&&) = delete;
-    poly_value_base_copy& operator=(const poly_value_base_copy&) = delete;
-    poly_value_base_copy& operator=(poly_value_base_copy&&) = delete;
+    enum class Op {
+        Copy,
+        Move,
+    };
 
-    using CopyFn = void (*)(const void* from, void* to);
+    using CopyMoveFn = void (*)(Op op, void* destination, const void* source);
+
+    poly_value_copy_move() noexcept = default;
+    poly_value_copy_move(const poly_value_copy_move&) = default;
+    poly_value_copy_move(poly_value_copy_move&&) = default;
+    poly_value_copy_move& operator=(const poly_value_copy_move&) = default;
+    poly_value_copy_move& operator=(poly_value_copy_move&&) = default;
 
     template<class D>
-    void generate_copy_fn() noexcept {}
-    CopyFn copy_fn() const noexcept;
-    void set_copy_fn(CopyFn) noexcept;
-};
-
-template<>
-class poly_value_base_copy<true> {
-public:
-    poly_value_base_copy() noexcept = default;
-    poly_value_base_copy(const poly_value_base_copy&) = delete;
-    poly_value_base_copy(poly_value_base_copy&&) = delete;
-    poly_value_base_copy& operator=(const poly_value_base_copy&) = delete;
-    poly_value_base_copy& operator=(poly_value_base_copy&&) = delete;
-
-    template<class D>
-    void generate_copy_fn() noexcept {
-        static_assert(
-            std::is_copy_constructible_v<D> || (std::is_default_constructible_v<D> && std::is_copy_assignable_v<D>));
-
-        if constexpr (std::is_copy_constructible_v<D>) {
-            _copy = [](const void* from, void* to) noexcept(
-                        std::is_nothrow_copy_constructible_v<D>) { new (to)(D)(*static_cast<const D*>(from)); };
-        } else {
-            _copy = [](const void* from, void* to) noexcept(
-                        std::is_nothrow_default_constructible_v<D>&& std::is_nothrow_copy_assignable_v<D>) {
-                auto v = new (to)(D)();
-                v = *static_cast<const D*>(from);
-            };
-        }
+    void generate_copy_move_fn() noexcept {
+        _fn = [](Op op, void* destination, const void* source) {
+            switch (op) {
+            case Op::Copy: {
+                if constexpr (std::is_copy_constructible_v<D>) {
+                    new (destination)(D)(*static_cast<const D*>(source));
+                } else {
+                    auto v = new (destination)(D)();
+                    v = *static_cast<const D*>(source);
+                }
+                break;
+            }
+            case Op::Move: {
+                if constexpr (std::is_move_constructible_v<D>) {
+                    new (destination)(D)(std::move(*static_cast<D*>(const_cast<void*>(source))));
+                } else {
+                    auto v = new (destination)(D)();
+                    v = std::move(*static_cast<D*>(const_cast<void*>(source)));
+                }
+                break;
+            }
+            }
+        };
     }
 
-    using CopyFn = void (*)(const void* from, void* to);
-    CopyFn copy_fn() const noexcept {
-        return _copy;
+    void copy(void* destination, const void* source) const {
+        _fn(Op::Copy, destination, source);
     }
-    void set_copy_fn(CopyFn fn) {
-        _copy = fn;
+
+    void move(void* destination, const void* source) const {
+        _fn(Op::Move, destination, source);
     }
 
 private:
-    CopyFn _copy = nullptr;
-};
-
-template<bool M>
-class poly_value_base_move {
-public:
-    poly_value_base_move() noexcept = default;
-    poly_value_base_move(const poly_value_base_move&) = delete;
-    poly_value_base_move(poly_value_base_move&&) = delete;
-    poly_value_base_move& operator=(const poly_value_base_move&) = delete;
-    poly_value_base_move& operator=(poly_value_base_move&&) = delete;
-
-    using MoveFn = void (*)(void* from, void* to);
-
-    template<class D>
-    constexpr void generate_move_fn() noexcept {}
-    MoveFn move_fn() const noexcept;
-    void set_move_fn(MoveFn fn) noexcept {};
+    CopyMoveFn _fn;
 };
 
 template<>
-class poly_value_base_move<true> {
+class poly_value_copy_move<false, false> {
 public:
-    poly_value_base_move() noexcept = default;
-    poly_value_base_move(const poly_value_base_move&) = delete;
-    poly_value_base_move(poly_value_base_move&&) = delete;
-    poly_value_base_move& operator=(const poly_value_base_move&) = delete;
-    poly_value_base_move& operator=(poly_value_base_move&&) = delete;
+    enum class Op {
+        Copy,
+        Move,
+    };
 
-    using MoveFn = void (*)(void* from, void* to);
+    using CopyMoveFn = void (*)(Op op, void* destination, const void* source);
+
+    poly_value_copy_move() noexcept = default;
+    poly_value_copy_move(const poly_value_copy_move&) = delete;
+    poly_value_copy_move(poly_value_copy_move&&) = delete;
+    poly_value_copy_move& operator=(const poly_value_copy_move&) = delete;
+    poly_value_copy_move& operator=(poly_value_copy_move&&) = delete;
 
     template<class D>
-    void generate_move_fn() noexcept {
-        static_assert(
-            std::is_move_constructible_v<D> || (std::is_default_constructible_v<D> && std::is_move_assignable_v<D>));
-
-        if constexpr (std::is_move_constructible_v<D>) {
-            _move = [](void* from, void* to) noexcept(
-                        std::is_nothrow_move_constructible_v<D>) { new (to)(D)(std::move(*static_cast<D*>(from))); };
-        } else {
-            _move = [](void* from, void* to) noexcept(
-                        std::is_nothrow_default_constructible_v<D>&& std::is_nothrow_move_assignable_v<D>) {
-                auto v = new (to)(D)();
-                v = std::move(*static_cast<D*>(from));
-            };
-        }
-    }
-    MoveFn move_fn() const noexcept {
-        return _move;
-    }
-    void set_move_fn(MoveFn fn) noexcept {
-        _move = fn;
-    }
-
-private:
-    MoveFn _move = nullptr;
+    void generate_copy_move_fn() noexcept {}
+    CopyMoveFn copy_fn() const noexcept;
+    void set_copy_move_fn(CopyMoveFn) noexcept;
 };
+
 } // namespace details
 
 struct flags {
@@ -171,13 +139,10 @@ public:
     {
         destroy();
         if (other.has_value()) {
+            _copy_move_fn = other._copy_move_fn;
             set_base_ptr_offset(other.base_ptr_offset());
 
-            _copy.set_copy_fn(other._copy.copy_fn());
-            if constexpr (Moveable) {
-                _move.set_move_fn(other._move.move_fn());
-            }
-            other._copy.copy_fn()(other._storage, this->_storage);
+            _copy_move_fn.copy(_storage, other._storage);
         }
         return *this;
     }
@@ -198,14 +163,10 @@ public:
     {
         destroy();
         if (other.has_value()) {
+            _copy_move_fn = other._copy_move_fn;
             set_base_ptr_offset(other.base_ptr_offset());
 
-            _move.set_move_fn(other._move.move_fn());
-            if constexpr (Copyable) {
-                _copy.set_copy_fn(other._copy.copy_fn());
-            }
-
-            other._move.move_fn()(other._storage, this->_storage);
+            _copy_move_fn.move(_storage, other._storage);
 
             other.destroy_and_clear();
         }
@@ -234,8 +195,7 @@ public:
 
         _base_ptr = new (_storage) D(std::forward<Args>(args)...);
 
-        _copy.template generate_copy_fn<D>();
-        _move.template generate_move_fn<D>();
+        _copy_move_fn.template generate_copy_move_fn<D>();
     }
 
     void emplace(const poly_value& other) noexcept(NoexceptCopy) {
@@ -307,8 +267,7 @@ private:
 private:
     Base* _base_ptr = nullptr;
 
-    details::poly_value_base_copy<Copyable> _copy;
-    details::poly_value_base_move<Moveable> _move;
+    details::poly_value_copy_move<Copyable, Moveable> _copy_move_fn;
 
     alignas(Base) std::byte _storage[Size];
 };
