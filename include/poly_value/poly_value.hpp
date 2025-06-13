@@ -67,13 +67,6 @@ private:
 template<>
 class poly_value_copy_move<false, false> {
 public:
-    enum class Op {
-        Copy,
-        Move,
-    };
-
-    using CopyMoveFn = void (*)(Op op, void* destination, const void* source);
-
     poly_value_copy_move() noexcept = default;
     poly_value_copy_move(const poly_value_copy_move&) = delete;
     poly_value_copy_move(poly_value_copy_move&&) = delete;
@@ -82,8 +75,6 @@ public:
 
     template<class D>
     void generate_copy_move_fn() noexcept {}
-    CopyMoveFn copy_fn() const noexcept;
-    void set_copy_move_fn(CopyMoveFn) noexcept;
 };
 
 } // namespace details
